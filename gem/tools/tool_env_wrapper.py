@@ -103,17 +103,17 @@ class ToolEnvWrapper(EnvWrapper):
                     )
             elif self.tool_execute_error_reward != 0:
                 reward = self.tool_execute_error_reward
-        
+
             info["use_tool"] = True
-            
+
         # if no tool was executed, step the environment
         else:
             observation, reward, terminated, truncated, info = self.env.step(action)
             info["use_tool"] = False
-            
+
         info["tool_use_counter"] = self.tool_use_counter
         info["tool_success_counter"] = self.tool_success_counter
-        
+
         return observation, reward, terminated, truncated, info
 
     def get_state(self) -> dict[str, Any]:

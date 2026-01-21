@@ -17,18 +17,23 @@
 # - Ensure solvability checks are correct.
 # - Ensure generated boards are valid AND solvable (via A*).
 
-import fire
-
 from copy import deepcopy
 from heapq import heappop, heappush
 from itertools import product
-from typing import Dict, List, Optional, Callable, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
+
+import fire
+
 from gem.envs.game_env.fifteen_puzzle import FifteenPuzzleEnv
+
 
 def classic_puzzle():
     # Returns the classic 4x4 fifteen puzzle environment.
     # You can edit this function to change parameters.
-    return FifteenPuzzleEnv(max_turns = 100, num_rows = 4, init_algo = "monte_carlo", mc_rand_moves = 20)
+    return FifteenPuzzleEnv(
+        max_turns=100, num_rows=4, init_algo="monte_carlo", mc_rand_moves=20
+    )
+
 
 def fix_state(env: FifteenPuzzleEnv, board: List[List[Optional[int]]], steps: int = 0):
     env.reset()
@@ -36,6 +41,9 @@ def fix_state(env: FifteenPuzzleEnv, board: List[List[Optional[int]]], steps: in
     env.board = deepcopy(board)
     env.blank_pos = env._get_empty_position()
     env.turn_count = steps
+
+def render_board(board: List[List[Optional[int]]]) -> str:
+    return ''.join(str(row) + '\n' for row in board)
 
 def transitions_work_properly():
     # 1. Goal board looks exactly as expected.
@@ -46,7 +54,7 @@ def transitions_work_properly():
 
     def reset_goal_state():
         fix_state(env, env._generate_goal_board())
-        
+
     reset_goal_state()
 
     GOAL_REFERENCE = [
@@ -61,17 +69,18 @@ def transitions_work_properly():
         for c in range(env.num_rows)
     ), (
         f"Initial board does not match goal reference. Expected\n"
-        f"{''.join(str(row) + '\n' for row in GOAL_REFERENCE)}, got\n"
-        f"{''.join(str(row) + '\n' for row in env.board)}"
+        f"{render_board(GOAL_REFERENCE)}, got\n"
+        f"{render_board(env.board)}"
     )
-    assert env._get_empty_position() == (3, 3), (
-        f"Expected blank tile at position (3, 3), got {env._get_empty_position()}"
-    )
+    assert env._get_empty_position() == (
+        3,
+        3,
+    ), f"Expected blank tile at position (3, 3), got {env._get_empty_position()}"
 
     # Test 1: Starting from the goal state.
     # Test 1a: Move 'down'
     reset_goal_state()
-    env.step(r'\\boxed{down}')
+    env.step(r"\\boxed{down}")
 
     expected = [
         [1, 2, 3, 4],
@@ -86,13 +95,13 @@ def transitions_work_properly():
         for c in range(env.num_rows)
     ), (
         f"After moving 'down' from goal state, expected\n"
-        f"{''.join(str(row) + '\n' for row in expected)}, got\n"
-        f"{''.join(str(row) + '\n' for row in env.board)}"
+        f"{render_board(expected)}, got\n"
+        f"{render_board(env.board)}"
     )
 
     # Test 1b: Move 'right'
     reset_goal_state()
-    env.step(r'\\boxed{right}')
+    env.step(r"\\boxed{right}")
     expected = [
         [1, 2, 3, 4],
         [5, 6, 7, 8],
@@ -106,40 +115,41 @@ def transitions_work_properly():
         for c in range(env.num_rows)
     ), (
         f"After moving 'right' from goal state, expected\n"
-        f"{''.join(str(row) + '\n' for row in expected)}, got\n"
-        f"{''.join(str(row) + '\n' for row in env.board)}"
+        f"{render_board(expected)}, got\n"
+        f"{render_board(env.board)}"
     )
 
     # Test 1c: Make sure 'up' is reported as invalid.
     reset_goal_state()
-    valid = env._move(r'up')
+    valid = env._move(r"up")
     assert not valid, "Expected 'up' move from goal state to be invalid."
 
     # Test 1d: Make sure 'left' is reported as invalid.
     reset_goal_state()
-    valid = env._move(r'left')
+    valid = env._move(r"left")
     assert not valid, "Expected 'left' move from goal state to be invalid."
 
     # Test 2: Starting from a non-goal state.
     NG_BOARD = [
-            [1, 2, 3, 4],
-            [5, 6, 7, 8],
-            [9, None, 11, 12],
-            [13, 10, 14, 15],
+        [1, 2, 3, 4],
+        [5, 6, 7, 8],
+        [9, None, 11, 12],
+        [13, 10, 14, 15],
     ]
     NG_BLANK_POS = (2, 1)
+
     def reset_non_goal_state():
         env.reset()
         env.board = deepcopy(NG_BOARD)
         env.blank_pos = NG_BLANK_POS
-    
+
     # Test 2a: All moves should be valid.
     # Test 2b: The blank tile should move correctly.
     for move, blank_tile_delta in [
-        (r'up', (1, 0)),
-        (r'down', (-1, 0)),
-        (r'left', (0, 1)),
-        (r'right', (0, -1)),
+        (r"up", (1, 0)),
+        (r"down", (-1, 0)),
+        (r"left", (0, 1)),
+        (r"right", (0, -1)),
     ]:
         reset_non_goal_state()
         valid = env._move(move)
@@ -154,6 +164,7 @@ def transitions_work_properly():
         )
     print("All transition tests passed.")
 
+
 def solvability_checks_work_properly():
     env = classic_puzzle()
 
@@ -164,7 +175,9 @@ def solvability_checks_work_properly():
         [9, 10, 11, 12],
         [13, 14, None, 15],
     ]
-    assert env._is_solvable(SOLVABLE_BOARD), "Expected known solvable board to be solvable."
+    assert env._is_solvable(
+        SOLVABLE_BOARD
+    ), "Expected known solvable board to be solvable."
 
     # Known unsolvable board
     UNSOLVABLE_BOARD = [
@@ -173,28 +186,34 @@ def solvability_checks_work_properly():
         [9, 10, 11, 12],
         [13, 15, 14, None],
     ]
-    assert not env._is_solvable(UNSOLVABLE_BOARD), "Expected known unsolvable board to be unsolvable."
+    assert not env._is_solvable(
+        UNSOLVABLE_BOARD
+    ), "Expected known unsolvable board to be unsolvable."
 
     print("All solvability check tests passed.")
+
 
 def generated_boards_are_valid_and_solvable(num_tests: int = 10):
 
     def manhattan_lc_heuristic(board: List[List[Optional[int]]]) -> int:
-        '''
+        """
         Beyond just letting tiles move with impunity, we consider how
         the blank tile must also move to facilitate these moves.
 
         The Linear Conflict (https://michael.kim/blog/puzzle) technique
         allows us to conservatively consider additional moves needed when
         two tiles are in their goal row/column but are reversed.
-        '''
-        pos = {} # Map actual position to the goal position
+        """
+        pos = {}  # Map actual position to the goal position
         for r in range(len(board)):
             for c in range(len(board[0])):
                 pos[(r, c)] = (
                     (len(board) - 1, len(board[0]) - 1)
-                    if board[r][c] is None 
-                    else ((board[r][c] - 1) // len(board[0]), (board[r][c] - 1) % len(board[0]))
+                    if board[r][c] is None
+                    else (
+                        (board[r][c] - 1) // len(board[0]),
+                        (board[r][c] - 1) % len(board[0]),
+                    )
                 )
 
         mh_dist = sum(
@@ -217,7 +236,7 @@ def generated_boards_are_valid_and_solvable(num_tests: int = 10):
                     (
                         (r1 < r2 and pos[(r1, c1)][0] > pos[(r2, c1)][0])
                         or (r1 > r2 and pos[(r1, c1)][0] < pos[(r2, c1)][0])
-                    ) 
+                    )
                     and (pos[(r1, c1)][1] == pos[(r2, c1)][1])
                     and pos[(r1, c1)][1] == c1
                 ):
@@ -231,7 +250,7 @@ def generated_boards_are_valid_and_solvable(num_tests: int = 10):
                     (
                         (c1 < c2 and pos[(r1, c1)][1] > pos[(r1, c2)][1])
                         or (c1 > c2 and pos[(r1, c1)][1] < pos[(r1, c2)][1])
-                    ) 
+                    )
                     and (pos[(r1, c1)][0] == pos[(r1, c2)][0])
                     and pos[(r1, c1)][0] == r1
                 ):
@@ -239,13 +258,13 @@ def generated_boards_are_valid_and_solvable(num_tests: int = 10):
         return mh_dist + num_out_of_place
 
     def inversion_heuristic(board: List[List[Optional[int]]]) -> int:
-        '''
+        """
         Second heuristic: Count number of inversions on the board.
         (https://michael.kim/blog/puzzle)
 
         Vertical moves of the blank tile fix up to 3 inversions, (good lower bound!)
         while horizontal ones leave them unchanged. (cf. how we compute the invariant)
-        '''
+        """
         flat_board = [
             board[r][c]
             for r in range(len(board))
@@ -253,7 +272,7 @@ def generated_boards_are_valid_and_solvable(num_tests: int = 10):
             if board[r][c] is not None
         ]
         num_inversions = 0
-        
+
         # Unfortunatly we need an efficient inversion algorithm since
         # the manhattan + LC is O(n^{3/2}).
         def mod_mergesort(flat_board: List[int]) -> Tuple[List[int], int]:
@@ -278,38 +297,32 @@ def generated_boards_are_valid_and_solvable(num_tests: int = 10):
             merged.extend(left[i:])
             merged.extend(right[j:])
             return merged, inversions
-        
+
         _, num_inversions = mod_mergesort(flat_board)
         return num_inversions // 3
-    
+
     def improved_manhattan_heuristic(board: List[List[Optional[int]]]) -> int:
-        return max(
-            manhattan_lc_heuristic(board),
-            inversion_heuristic(board)
-        )
+        return max(manhattan_lc_heuristic(board), inversion_heuristic(board))
 
     def a_star_solve(
-            start_board: List[List[Optional[int]]], 
-            heuristic: Callable[[List[List[Optional[int]]]], int]
-        ) -> Optional[List[str]]:
+        start_board: List[List[Optional[int]]],
+        heuristic: Callable[[List[List[Optional[int]]]], int],
+    ) -> Optional[List[str]]:
         # A* solver to verify solvability of generated boards.
 
         def state_hash(board: List[List[Optional[int]]]) -> str:
-            return '\n'.join(
-                ','.join(
-                    str(board[r][c]) if board[r][c] is not None else 'X'
+            return "\n".join(
+                ",".join(
+                    str(board[r][c]) if board[r][c] is not None else "X"
                     for c in range(len(board[0]))
                 )
                 for r in range(len(board))
             )
-        
+
         def state_unhash(s: str) -> List[List[Optional[int]]]:
             return [
-                [
-                    int(x) if x != 'X' else None
-                    for x in row.split(',')
-                ]
-                for row in s.split('\n')
+                [int(x) if x != "X" else None for x in row.split(",")]
+                for row in s.split("\n")
             ]
 
         dummy_env = classic_puzzle()
@@ -326,7 +339,7 @@ def generated_boards_are_valid_and_solvable(num_tests: int = 10):
             f, sec_prio, g, curr_turn, board_hash, last_move = heappop(pq)
             board = state_unhash(board_hash)
 
-            fix_state(dummy_env, board, steps = curr_turn)
+            fix_state(dummy_env, board, steps=curr_turn)
 
             if board_hash in visited and visited[board_hash] <= g:
                 continue
@@ -340,12 +353,14 @@ def generated_boards_are_valid_and_solvable(num_tests: int = 10):
                 while parent[shash] is not None:
                     path.append(parent[shash][1])  # move description
                     shash = parent[shash][0]
-                return path[::-1], g # Return reversed path and cost
+                return path[::-1], g  # Return reversed path and cost
             n_exp += 1
             if n_exp % 1000 == 0:
-                print(f"Expanded {n_exp} nodes so far. Frontier size: {len(pq)}. Frontier min f: {pq[0][0]}")
+                print(
+                    f"Expanded {n_exp} nodes so far. Frontier size: {len(pq)}. Frontier min f: {pq[0][0]}"
+                )
             visited[board_hash] = g
-            
+
             # While entirely possible to use a faster representation,
             # we respect the existing environment structure for clarity.
             for move in ["up", "down", "left", "right"]:
@@ -357,12 +372,12 @@ def generated_boards_are_valid_and_solvable(num_tests: int = 10):
                 ):
                     # Don't immediately undo the last move.
                     continue
-                fix_state(dummy_env, board, steps = curr_turn)
+                fix_state(dummy_env, board, steps=curr_turn)
                 valid = dummy_env._move(move)
                 if not valid:
                     continue
                 new_board = deepcopy(dummy_env.board)
-                assert any (
+                assert any(
                     new_board[r][c] != board[r][c]
                     for r in range(len(board))
                     for c in range(len(board[0]))
@@ -374,15 +389,15 @@ def generated_boards_are_valid_and_solvable(num_tests: int = 10):
                     new_h = heuristic(new_board)
                     new_f = new_g + new_h
                     heappush(
-                        pq, 
+                        pq,
                         (
                             new_f,
                             -new_g,
                             new_g,
                             curr_turn + 1,
                             state_hash(new_board),
-                            move
-                        )
+                            move,
+                        ),
                     )
 
         return None, None  # No solution found
@@ -404,32 +419,38 @@ def generated_boards_are_valid_and_solvable(num_tests: int = 10):
     for i in range(num_tests):
         env.reset()
         board = deepcopy(env.board)
-        solution, cost = a_star_solve(board, heuristic = improved_manhattan_heuristic)
+        solution, cost = a_star_solve(board, heuristic=improved_manhattan_heuristic)
         assert solution is not None, (
             f"Generated board on test {i} is not solvable:\n"
-            f"{''.join(str(row) + '\n' for row in board)}"
+            f"{render_board(board)}"
         )
 
         verifier = classic_puzzle()
-        fix_state(verifier, board, steps = 0)
+        fix_state(verifier, board, steps=0)
         for move in solution:
             ortti = verifier.step(f"\\boxed{{{move}}}")
             print(f"Applied move: {move}")
-            print(f"Legality: {ortti[0]}, Reward: {ortti[1]}, Done: {ortti[2]}, Info: {ortti[3]}")
-            print(f"Current board:\n{''.join(str(row) + '\n' for row in verifier.board)}")
+            print(
+                f"Legality: {ortti[0]}, Reward: {ortti[1]}, Done: {ortti[2]}, Info: {ortti[3]}"
+            )
+            print(
+                f"Current board:\n{render_board(verifier.board)}"
+            )
 
         assert verifier._is_solved(), (
             f"Solution provided does not solve the board. Expected board:\n"
-            f"{''.join(str(row) + '\n' for row in verifier._generate_goal_board())}, got\n"
-            f"{''.join(str(row) + '\n' for row in verifier.board)}"
+            f"{render_board(verifier._generate_goal_board())}, got\n"
+            f"{render_board(verifier.board)}"
         )
 
-        print(f"Test {i + 1}/{num_tests} passed: Generated board is valid and solvable.")
+        print(
+            f"Test {i + 1}/{num_tests} passed: Generated board is valid and solvable."
+        )
         print(f"Solution length: {len(solution)} moves.")
-        print(f"Start board:\n{''.join(str(row) + '\n' for row in board)}")
-    
+        print(f"Start board:\n{render_board(board)}")
+
     print("All generated board tests passed.")
-        
+
 
 def other_environment_checks():
     # Check for other things like step limits, reset functionality, etc.
@@ -439,7 +460,9 @@ def other_environment_checks():
     for _ in range(10):
         env.step(env.sample_random_action())
     env.reset()
-    assert env.turn_count == 0, f"Expected current turn to be 0 after reset, got {env.turn_count}."
+    assert (
+        env.turn_count == 0
+    ), f"Expected current turn to be 0 after reset, got {env.turn_count}."
 
     # Test 2: Ensure step limits are enforced.
     env.reset()
@@ -447,8 +470,11 @@ def other_environment_checks():
     for _ in range(env.max_turns):
         ortti = env.step(f"\\boxed{{{env.sample_random_action()}}}")
         print(ortti)
-    assert ortti[2] or ortti[3], f"Expected environment to be done after max turns. {ortti}"
+    assert (
+        ortti[2] or ortti[3]
+    ), f"Expected environment to be done after max turns. {ortti}"
     print("All other environment checks passed.")
+
 
 def test_all():
     transitions_work_properly()
@@ -456,17 +482,20 @@ def test_all():
     generated_boards_are_valid_and_solvable()
     other_environment_checks()
 
+
 if __name__ == "__main__":
 
-    fire.Fire({
-        "transitions_work_properly": transitions_work_properly,
-        "solvability_checks_work_properly": solvability_checks_work_properly,
-        "generated_boards_are_valid_and_solvable": generated_boards_are_valid_and_solvable,
-        "other_environment_checks": other_environment_checks,
-        "test_all": test_all,
-    })
+    fire.Fire(
+        {
+            "transitions_work_properly": transitions_work_properly,
+            "solvability_checks_work_properly": solvability_checks_work_properly,
+            "generated_boards_are_valid_and_solvable": generated_boards_are_valid_and_solvable,
+            "other_environment_checks": other_environment_checks,
+            "test_all": test_all,
+        }
+    )
 
-    '''
+    """
     Usage:
     python -m tests.test_env.test_fifteen <TEST_NAME>
-    '''
+    """

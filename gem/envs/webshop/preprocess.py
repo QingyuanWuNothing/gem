@@ -59,8 +59,7 @@ def _parse_product(raw: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _init_db_products(conn: sqlite3.Connection) -> None:
-    conn.executescript(
-        """
+    conn.executescript("""
         PRAGMA journal_mode=WAL;
         PRAGMA foreign_keys=ON;
 
@@ -97,13 +96,11 @@ def _init_db_products(conn: sqlite3.Connection) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_all_products_category
             ON all_products(category);
-        """
-    )
+        """)
 
 
 def _init_db_goals(conn: sqlite3.Connection, split: str) -> None:
-    conn.executescript(
-        f"""
+    conn.executescript(f"""
         PRAGMA journal_mode=WAL;
         PRAGMA foreign_keys=ON;
 
@@ -122,8 +119,7 @@ def _init_db_goals(conn: sqlite3.Connection, split: str) -> None:
             goal_options TEXT,
             weight REAL
         );
-        """
-    )
+        """)
 
 
 def build_documents_jsonl(raw_products: Sequence[Dict[str, Any]]) -> None:

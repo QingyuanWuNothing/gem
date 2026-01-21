@@ -23,22 +23,30 @@ from gem.utils.constants import LanguageGameReward
 
 
 class FifteenPuzzleEnv(Env):
-    '''
+    """
     The Fifteen Puzzle is a sequential, deterministic, single-agent game
     where the agent is presented with a 4x4 grid containing 15 tiles (1-15)
-    and one empty space, and must arrange them in row-major ascending order by 
+    and one empty space, and must arrange them in row-major ascending order by
     sliding tiles into the empty space.
 
     For generalization and convenience purposes, we parameterize the puzzle size
     (num_rows) and the maximum number of turns to solve the puzzle (max_turns).
 
     Special care is taken to make the board solvable by generating
-    configurations which respect the parity constraints of the puzzle 
+    configurations which respect the parity constraints of the puzzle
     (https://doi.org/10.2307/2369492).
-    '''
+    """
+
     VALID_INITIALIZATION_ALGOS = ["monte_carlo", "pure_random"]
 
-    def __init__(self, max_turns: Optional[int] = 20, num_rows: Optional[int] = 2, init_algo = "monte_carlo", mc_rand_moves = 100, **_):
+    def __init__(
+        self,
+        max_turns: Optional[int] = 20,
+        num_rows: Optional[int] = 2,
+        init_algo="monte_carlo",
+        mc_rand_moves=100,
+        **_,
+    ):
         super().__init__()
         self.max_turns = max_turns
         self.num_rows = num_rows
@@ -48,7 +56,9 @@ class FifteenPuzzleEnv(Env):
             f"Valid options are: {self.VALID_INITIALIZATION_ALGOS}"
         )
         self.mc_rand_moves = mc_rand_moves
-        assert mc_rand_moves > 0, "Number of random moves for Monte Carlo initialization must be positive."
+        assert (
+            mc_rand_moves > 0
+        ), "Number of random moves for Monte Carlo initialization must be positive."
         self._is_random = num_rows is None or max_turns is None
         self.greatest_num = self.num_rows**2 - 1
         self.reset()
@@ -147,27 +157,26 @@ class FifteenPuzzleEnv(Env):
             if _is_equal(cor, cur):
                 reward += 1 / (self.greatest_num + 1)
         return reward
-    
+
     def _has_correct_tiles(self, board: List[List[Optional[int]]]) -> bool:
-        '''
+        """
         Check, as a necessary condition, that the board contains all tiles from 1 to greatest_num.
-        '''
+        """
         correct_tiles = set(range(1, self.greatest_num + 1)) | {None}
         current_tiles = {tile for row in board for tile in row}
         return correct_tiles == current_tiles
 
-
     def _get_board_parity(self, board: List[List[Optional[int]]]) -> int:
-        '''
+        """
         Computes the invariant of the current board,
-        which is defined as the parity of the sum of two components: 
+        which is defined as the parity of the sum of two components:
         - parity of tile permutations (incl. empty tile)
-        - the Manhattan distance of the empty space from 
+        - the Manhattan distance of the empty space from
         the top-left corner.
 
         This completely determines whether the board is solvable,
         since all moves preserve this invariant.
-        '''
+        """
         # Collect tiles in row-major order.
         tiles = [tile for row in board for tile in row]
 
@@ -181,23 +190,26 @@ class FifteenPuzzleEnv(Env):
             tiles[i], tiles[pos_of_tile] = tiles[pos_of_tile], tiles[i]
             tps += 1
         tile_parity = tps % 2
-        
+
         # Compute Manhattan distance of empty space from top-left corner
         tiles_empty_idx = [tile for row in board for tile in row].index(None)
-        empty_row, empty_col = tiles_empty_idx // self.num_rows, tiles_empty_idx % self.num_rows
+        empty_row, empty_col = (
+            tiles_empty_idx // self.num_rows,
+            tiles_empty_idx % self.num_rows,
+        )
         mh_dist = empty_row + empty_col
         empty_parity = mh_dist % 2
 
         return (tile_parity + empty_parity) % 2
 
     def _is_solvable(self, board: List[List[Optional[int]]]) -> bool:
-        '''
+        """
         Checks if the given board configuration is solvable,
         based on the parity invariant.
-        '''
+        """
         if not self._has_correct_tiles(board):
             return False
-        
+
         return self._get_board_parity(board) == self.goal_parity
 
     def _generate_solvable_board(self) -> List[List[Optional[int]]]:
@@ -205,7 +217,7 @@ class FifteenPuzzleEnv(Env):
         # Empirically speaking, pure random sampling produces extremely difficult boards.
         # An alternative is to perform a series of random valid moves
         # (which by definition are invariant-preserving).
-        # Only constraint is we don't "waste" moves; i.e. make those that 
+        # Only constraint is we don't "waste" moves; i.e. make those that
         # immediately reverse the previous move.
 
         if self.init_algo == "pure_random":
@@ -218,17 +230,23 @@ class FifteenPuzzleEnv(Env):
                 for i in range(0, self.greatest_num + 1, self.num_rows)
             ]
             if not self._is_solvable(cand_board):
-                tile1, tile2 = random.sample(
-                    [t for t in tiles if t is not None], 2
-                )
+                tile1, tile2 = random.sample([t for t in tiles if t is not None], 2)
                 idx1, idx2 = tiles.index(tile1), tiles.index(tile2)
                 r1, c1 = idx1 // self.num_rows, idx1 % self.num_rows
                 r2, c2 = idx2 // self.num_rows, idx2 % self.num_rows
-                cand_board[r1][c1], cand_board[r2][c2] = cand_board[r2][c2], cand_board[r1][c1]
+                cand_board[r1][c1], cand_board[r2][c2] = (
+                    cand_board[r2][c2],
+                    cand_board[r1][c1],
+                )
             return cand_board
         elif self.init_algo == "monte_carlo":
             board = self._generate_goal_board()
-            opposite_moves = {"up": "down", "down": "up", "left": "right", "right": "left"}
+            opposite_moves = {
+                "up": "down",
+                "down": "up",
+                "left": "right",
+                "right": "left",
+            }
             last_move = None
             for _ in range(self.mc_rand_moves):
                 curr_empty_row, curr_empty_col = -1, -1
@@ -238,7 +256,7 @@ class FifteenPuzzleEnv(Env):
                             curr_empty_row, curr_empty_col = i, j
                             break
                 possible_moves = [
-                    move 
+                    move
                     for move in ["up", "down", "left", "right"]
                     if (
                         move != (opposite_moves[last_move] if last_move else None)
@@ -254,7 +272,7 @@ class FifteenPuzzleEnv(Env):
                 tgt_row, tgt_col = curr_empty_row, curr_empty_col
                 if move == "up":
                     tgt_row += 1
-                elif move == "down": 
+                elif move == "down":
                     tgt_row -= 1
                 elif move == "left":
                     tgt_col += 1
@@ -269,16 +287,15 @@ class FifteenPuzzleEnv(Env):
 
             return board
 
-    
     def _generate_goal_board(self) -> List[List[Optional[int]]]:
-        '''
+        """
         Defines the goal board configuration for the puzzle.
 
         This is used for:
         - Checking if the puzzle is solved.
         - Computing soft rewards based on tile positions.
         - Computing board parity for solvability checks.
-        '''
+        """
         tiles = list(range(1, self.greatest_num + 1)) + [None]
         return [
             tiles[i : i + self.num_rows]
